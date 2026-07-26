@@ -3,6 +3,7 @@ from app.retriever import VectorStore
 
 
 def main():
+
     print("=" * 60)
     print("BUILDING VECTOR DATABASE")
     print("=" * 60)
@@ -20,6 +21,12 @@ def main():
     vector_store.add_documents(chunks)
 
     print("Knowledge base created successfully.")
+
+    print("\n")
+
+    query = "What is Agentic AI?"
+
+    vector_store.print_search_results(query)
 
 
 if __name__ == "__main__":
