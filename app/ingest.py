@@ -4,90 +4,113 @@ import fitz
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from app.config import (
+    PDF_PATH,
+    CHUNK_SIZE,
+    CHUNK_OVERLAP,
+)
+
 
 class PDFIngestor:
     """
-    Read a PDF and convert it into LangChain Documents.
+    Handles PDF loading and document chunking.
     """
 
-    def __init__(self, pdf_path: str):
-        self.pdf_path = Path(pdf_path)
+    def __init__(self, pdf_path: Path = PDF_PATH):
+        self.pdf_path = pdf_path
 
     def load_documents(self) -> list[Document]:
         """
-        Load every page of the PDF.
+        Read the PDF and convert each page into a LangChain Document.
         """
+
+        if not self.pdf_path.exists():
+            raise FileNotFoundError(
+                f"PDF not found: {self.pdf_path}"
+            )
 
         pdf = fitz.open(self.pdf_path)
 
         documents = []
 
-        for page_number, page in enumerate(pdf, start=1):
+        try:
+            for page_number, page in enumerate(pdf, start=1):
 
-            text = page.get_text("text").strip()
+                text = page.get_text("text").strip()
 
-            if len(text) == 0:
-                continue
+                if not text:
+                    continue
 
-            documents.append(
-                Document(
-                    page_content=text,
-                    metadata={
-                        "page": page_number,
-                        "source": self.pdf_path.name,
-                    },
+                documents.append(
+                    Document(
+                        page_content=text,
+                        metadata={
+                            "page": page_number,
+                            "source": self.pdf_path.name,
+                        },
+                    )
                 )
-            )
 
-        pdf.close()
+        finally:
+            pdf.close()
 
         return documents
 
     def split_documents(
         self,
         documents: list[Document],
-        chunk_size: int = 500,
-        chunk_overlap: int = 100,
     ) -> list[Document]:
         """
-        Split documents into chunks while preserving metadata.
+        Split documents into smaller overlapping chunks.
         """
 
         splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
+            chunk_size=CHUNK_SIZE,
+            chunk_overlap=CHUNK_OVERLAP,
+            separators=[
+                "\n\n",
+                "\n",
+                ". ",
+                " ",
+                "",
+            ],
         )
 
         chunks = splitter.split_documents(documents)
 
         for chunk_id, chunk in enumerate(chunks):
+
             chunk.metadata["chunk_id"] = chunk_id
             chunk.metadata["chunk_size"] = len(chunk.page_content)
 
         return chunks
 
+    def ingest(self) -> list[Document]:
+        """
+        Complete ingestion pipeline.
+        """
 
-def main():
+        documents = self.load_documents()
 
-    ingestor = PDFIngestor("data/agentic_ai_ebook.pdf")
+        chunks = self.split_documents(documents)
 
-    documents = ingestor.load_documents()
+        return chunks
 
-    chunks = ingestor.split_documents(documents)
+
+if __name__ == "__main__":
+
+    ingestor = PDFIngestor()
+
+    chunks = ingestor.ingest()
 
     print("=" * 60)
     print("PDF INGESTION SUMMARY")
     print("=" * 60)
 
-    print(f"Pages Loaded   : {len(documents)}")
-    print(f"Chunks Created : {len(chunks)}")
+    print(f"Total Chunks : {len(chunks)}")
 
     print("\nFirst Chunk\n")
-    print(chunks[0].page_content[:300])
+    print(chunks[0].page_content[:500])
 
     print("\nMetadata\n")
     print(chunks[0].metadata)
-
-
-if __name__ == "__main__":
-    main()
