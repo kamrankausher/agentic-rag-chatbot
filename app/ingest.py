@@ -7,7 +7,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 class PDFIngestor:
     """
-    Reads a PDF and converts it into LangChain Documents.
+    Read a PDF and convert it into LangChain Documents.
     """
 
     def __init__(self, pdf_path: str):
@@ -15,7 +15,7 @@ class PDFIngestor:
 
     def load_documents(self) -> list[Document]:
         """
-        Read every page from the PDF and create a Document object.
+        Load every page of the PDF.
         """
 
         pdf = fitz.open(self.pdf_path)
@@ -24,20 +24,20 @@ class PDFIngestor:
 
         for page_number, page in enumerate(pdf, start=1):
 
-            text = page.get_text().strip()
+            text = page.get_text("text").strip()
 
-            if not text:
+            if len(text) == 0:
                 continue
 
-            document = Document(
-                page_content=text,
-                metadata={
-                    "page": page_number,
-                    "source": self.pdf_path.name,
-                },
+            documents.append(
+                Document(
+                    page_content=text,
+                    metadata={
+                        "page": page_number,
+                        "source": self.pdf_path.name,
+                    },
+                )
             )
-
-            documents.append(document)
 
         pdf.close()
 
@@ -50,7 +50,7 @@ class PDFIngestor:
         chunk_overlap: int = 100,
     ) -> list[Document]:
         """
-        Split documents into smaller chunks while preserving metadata.
+        Split documents into chunks while preserving metadata.
         """
 
         splitter = RecursiveCharacterTextSplitter(
@@ -60,8 +60,9 @@ class PDFIngestor:
 
         chunks = splitter.split_documents(documents)
 
-        for index, chunk in enumerate(chunks):
-            chunk.metadata["chunk_id"] = index
+        for chunk_id, chunk in enumerate(chunks):
+            chunk.metadata["chunk_id"] = chunk_id
+            chunk.metadata["chunk_size"] = len(chunk.page_content)
 
         return chunks
 
@@ -78,7 +79,7 @@ def main():
     print("PDF INGESTION SUMMARY")
     print("=" * 60)
 
-    print(f"Pages Loaded : {len(documents)}")
+    print(f"Pages Loaded   : {len(documents)}")
     print(f"Chunks Created : {len(chunks)}")
 
     print("\nFirst Chunk\n")
