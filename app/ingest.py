@@ -1,70 +1,91 @@
 from pathlib import Path
 
 import fitz
+from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
-# Path to the PDF
-PDF_PATH = Path("data/agentic_ai_ebook.pdf")
-
-
-def load_pdf(pdf_path: Path) -> str:
+class PDFIngestor:
     """
-    Load a PDF and return all extracted text as a single string.
+    Reads a PDF and converts it into LangChain Documents.
     """
 
-    document = fitz.open(pdf_path)
+    def __init__(self, pdf_path: str):
+        self.pdf_path = Path(pdf_path)
 
-    pages_text = []
+    def load_documents(self) -> list[Document]:
+        """
+        Read every page from the PDF and create a Document object.
+        """
 
-    for page in document:
-        text = page.get_text()
-        pages_text.append(text)
+        pdf = fitz.open(self.pdf_path)
 
-    document.close()
+        documents = []
 
-    return "\n".join(pages_text)
+        for page_number, page in enumerate(pdf, start=1):
 
+            text = page.get_text().strip()
 
-def split_text(text: str) -> list[str]:
-    """
-    Split extracted text into smaller chunks.
-    """
+            if not text:
+                continue
 
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=100,
-        length_function=len,
-    )
+            document = Document(
+                page_content=text,
+                metadata={
+                    "page": page_number,
+                    "source": self.pdf_path.name,
+                },
+            )
 
-    chunks = splitter.split_text(text)
+            documents.append(document)
 
-    return chunks
+        pdf.close()
+
+        return documents
+
+    def split_documents(
+        self,
+        documents: list[Document],
+        chunk_size: int = 500,
+        chunk_overlap: int = 100,
+    ) -> list[Document]:
+        """
+        Split documents into smaller chunks while preserving metadata.
+        """
+
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+        )
+
+        chunks = splitter.split_documents(documents)
+
+        for index, chunk in enumerate(chunks):
+            chunk.metadata["chunk_id"] = index
+
+        return chunks
 
 
 def main():
-    # Load the PDF
-    text = load_pdf(PDF_PATH)
 
-    # Split into chunks
-    chunks = split_text(text)
+    ingestor = PDFIngestor("data/agentic_ai_ebook.pdf")
+
+    documents = ingestor.load_documents()
+
+    chunks = ingestor.split_documents(documents)
 
     print("=" * 60)
-    print("PDF Loaded Successfully")
+    print("PDF INGESTION SUMMARY")
     print("=" * 60)
 
-    print(f"Total Characters : {len(text):,}")
-    print(f"Total Chunks     : {len(chunks)}")
+    print(f"Pages Loaded : {len(documents)}")
+    print(f"Chunks Created : {len(chunks)}")
 
-    print("\n" + "=" * 60)
-    print("First Chunk")
-    print("=" * 60)
-    print(chunks[0])
+    print("\nFirst Chunk\n")
+    print(chunks[0].page_content[:300])
 
-    print("\n" + "=" * 60)
-    print("Last Chunk")
-    print("=" * 60)
-    print(chunks[-1])
+    print("\nMetadata\n")
+    print(chunks[0].metadata)
 
 
 if __name__ == "__main__":
