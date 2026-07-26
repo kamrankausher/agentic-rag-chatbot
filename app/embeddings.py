@@ -1,14 +1,15 @@
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 
-embedding_model = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+class EmbeddingModel:
+    """
+    Loads the embedding model.
+    """
 
-text = "Agentic AI enables autonomous decision making."
+    def __init__(self):
+        self.model = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        )
 
-vector = embedding_model.embed_query(text)
-
-print("Vector Length :", len(vector))
-print("First 10 Values:\n")
-print(vector[:10])
+    def get_model(self):
+        return self.model
