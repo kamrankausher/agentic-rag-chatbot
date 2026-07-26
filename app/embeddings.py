@@ -1,11 +1,24 @@
 from langchain_huggingface import HuggingFaceEmbeddings
 
+from app.config import EMBEDDING_MODEL
 
-def get_embedding_model():
+
+class EmbeddingModel:
     """
-    Load and return the embedding model.
+    Singleton-style wrapper for the HuggingFace embedding model.
     """
 
-    return HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
-    )
+    _embedding_model = None
+
+    @classmethod
+    def get_model(cls):
+        """
+        Load the embedding model only once.
+        """
+
+        if cls._embedding_model is None:
+            cls._embedding_model = HuggingFaceEmbeddings(
+                model_name=EMBEDDING_MODEL
+            )
+
+        return cls._embedding_model
