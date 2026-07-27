@@ -1,32 +1,15 @@
-from app.ingest import PDFIngestor
-from app.retriever import VectorStore
+import uvicorn
+
+from app.config import HOST, PORT
 
 
 def main():
-
-    print("=" * 60)
-    print("BUILDING VECTOR DATABASE")
-    print("=" * 60)
-
-    ingestor = PDFIngestor("data/agentic_ai_ebook.pdf")
-
-    documents = ingestor.load_documents()
-
-    chunks = ingestor.split_documents(documents)
-
-    print(f"Loaded {len(chunks)} chunks.")
-
-    vector_store = VectorStore()
-
-    vector_store.add_documents(chunks)
-
-    print("Knowledge base created successfully.")
-
-    print("\n")
-
-    query = "What is Agentic AI?"
-
-    vector_store.print_search_results(query)
+    uvicorn.run(
+        "app.api:app",
+        host=HOST,
+        port=PORT,
+        reload=True,
+    )
 
 
 if __name__ == "__main__":

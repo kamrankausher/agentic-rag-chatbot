@@ -6,67 +6,82 @@ from app.rag import RAGPipeline
 
 
 class GraphState(TypedDict):
-    """
-    State shared across the LangGraph workflow.
-    """
-
     question: str
-    answer: str
+    context: str
     retrieved_chunks: list
+    answer: str
 
 
 class AgenticRAGGraph:
     """
-    LangGraph workflow for the RAG chatbot.
+    Multi-node LangGraph workflow.
     """
 
     def __init__(self):
         self.rag = RAGPipeline()
         self.graph = self._build_graph()
 
-    def retrieve_and_generate(self, state: GraphState):
+    def retrieve_node(self, state: GraphState):
         """
-        Retrieve relevant context and generate an answer.
+        Retrieve relevant documents.
         """
 
-        result = self.rag.ask(state["question"])
+        retrieval = self.rag.retrieve(state["question"])
 
         return {
-            "question": state["question"],
-            "answer": result["answer"],
-            "retrieved_chunks": result["retrieved_chunks"],
+            "context": retrieval["context"],
+            "retrieved_chunks": retrieval["retrieved_chunks"],
+        }
+
+    def generate_node(self, state: GraphState):
+        """
+        Generate grounded answer.
+        """
+
+        answer = self.rag.generate(
+            question=state["question"],
+            context=state["context"],
+        )
+
+        return {
+            "answer": answer,
         }
 
     def _build_graph(self):
-        """
-        Create the LangGraph workflow.
-        """
 
         workflow = StateGraph(GraphState)
 
         workflow.add_node(
-            "retrieve_and_generate",
-            self.retrieve_and_generate,
+            "retrieve",
+            self.retrieve_node,
         )
 
-        workflow.set_entry_point("retrieve_and_generate")
+        workflow.add_node(
+            "generate",
+            self.generate_node,
+        )
+
+        workflow.set_entry_point("retrieve")
 
         workflow.add_edge(
-            "retrieve_and_generate",
+            "retrieve",
+            "generate",
+        )
+
+        workflow.add_edge(
+            "generate",
             END,
         )
 
         return workflow.compile()
 
     def invoke(self, question: str):
-        """
-        Execute the LangGraph workflow.
-        """
 
         return self.graph.invoke(
             {
                 "question": question,
-                "answer": "",
+                "context": "",
                 "retrieved_chunks": [],
+                "answer": "",
             }
         )

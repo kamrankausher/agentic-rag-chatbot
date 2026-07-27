@@ -31,7 +31,7 @@ EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 # LLM Configuration
 # ---------------------------------------------------------------------
 
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-3.6-flash"
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
@@ -61,6 +61,6 @@ API_DESCRIPTION = (
     "RAG-based chatbot using LangGraph, ChromaDB and Gemini."
 )
 
-HOST = "0.0.0.0"
+HOST = "127.0.0.1"
 
 PORT = 8000

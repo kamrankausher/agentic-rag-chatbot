@@ -7,7 +7,7 @@ from app.embeddings import EmbeddingModel
 
 class VectorStore:
     """
-    Handles all interactions with the Chroma vector database.
+    Handles all ChromaDB operations.
     """
 
     def __init__(self):
@@ -16,16 +16,19 @@ class VectorStore:
         self.vector_db = Chroma(
             persist_directory=str(CHROMA_DB_DIR),
             embedding_function=self.embedding_model,
+            collection_name="agentic_ai",
         )
 
     def reset_database(self):
         """
-        Delete all existing vectors from the database.
-        This is useful during development to avoid duplicate embeddings.
+        Remove every existing document from Chroma.
+        Call this BEFORE indexing.
         """
 
         try:
-            ids = self.vector_db.get()["ids"]
+            data = self.vector_db.get()
+
+            ids = data.get("ids", [])
 
             if ids:
                 self.vector_db.delete(ids=ids)
@@ -35,13 +38,23 @@ class VectorStore:
 
     def add_documents(self, documents: list[Document]):
         """
-        Store document chunks inside ChromaDB.
+        Add chunks with deterministic IDs.
         """
 
         if not documents:
             return
 
-        self.vector_db.add_documents(documents)
+        ids = []
+
+        for doc in documents:
+            ids.append(
+                f"{doc.metadata['source']}_page_{doc.metadata['page']}_chunk_{doc.metadata['chunk_id']}"
+            )
+
+        self.vector_db.add_documents(
+            documents=documents,
+            ids=ids,
+        )
 
     def similarity_search(
         self,
@@ -49,30 +62,41 @@ class VectorStore:
         k: int = TOP_K,
     ):
         """
-        Return the most relevant document chunks
-        together with similarity scores.
+        Return the top-k unique results.
         """
 
-        return self.vector_db.similarity_search_with_score(
+        results = self.vector_db.similarity_search_with_score(
             query=query,
-            k=k,
+            k=max(k * 3, 10),
         )
 
-    def get_retriever(self, k: int = TOP_K):
-        """
-        Return a LangChain Retriever.
-        This will later be used by LangGraph.
-        """
+        unique = []
+        seen = set()
 
+        for doc, score in results:
+
+            uid = (
+                doc.metadata.get("page"),
+                doc.metadata.get("chunk_id"),
+            )
+
+            if uid in seen:
+                continue
+
+            seen.add(uid)
+            unique.append((doc, score))
+
+            if len(unique) == k:
+                break
+
+        return unique
+
+    def get_retriever(self):
         return self.vector_db.as_retriever(
             search_kwargs={
-                "k": k
+                "k": TOP_K
             }
         )
 
     def document_count(self):
-        """
-        Return the total number of vectors stored.
-        """
-
         return self.vector_db._collection.count()
