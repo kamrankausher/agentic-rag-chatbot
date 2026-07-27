@@ -119,7 +119,7 @@ agentic-rag-chatbot
 Clone the repository
 
 ```bash
-git clone <your-github-repo>
+git clone https://github.com/kamrankausher/agentic-rag-chatbot.git
 ```
 
 Go to project folder
@@ -282,5 +282,3 @@ Some improvements that can be added later are
 Kamran Kausher
 
 B.Tech Computer Science and Engineering
-
-Final Year Student
